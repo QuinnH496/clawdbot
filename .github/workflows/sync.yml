@@ -1,0 +1,19 @@
+name: Scheduled Sync
+
+on:
+  schedule:
+    - cron: '0 */4 * * *' # 每隔 4 小时运行一次 (UTC 时间 0, 4, 8, 12, 16, 20 点)
+  workflow_dispatch:    # 允许你手动点击运行
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Sync with Upstream
+        uses: wei/pull@v3
+        with:
+          upstream_package_repository: openclaw/openclaw
+          upstream_release_branch: main
+          target_lastest_branch: main
+          target_branch: main
+          github_token: ${{ secrets.GITHUB_TOKEN }}
