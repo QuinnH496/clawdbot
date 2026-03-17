@@ -11,6 +11,7 @@ import {
   createChatModelOverride,
   formatChatModelDisplay,
   normalizeChatModelOverrideValue,
+  resolveBestProvider,
   resolveServerChatModelValue,
 } from "./chat-model-ref.ts";
 import { ChatState, loadChatHistory } from "./controllers/chat.ts";
@@ -554,31 +555,44 @@ function buildChatModelOptions(
   currentOverride: string,
   defaultModel: string,
 ): Array<{ value: string; label: string }> {
-  const seen = new Set<string>();
+  const seenModelIds = new Set<string>();
   const options: Array<{ value: string; label: string }> = [];
-  const addOption = (value: string, label?: string) => {
+
+  // Process catalog entries, keeping only the best provider for each model ID.
+  // This prevents duplicate models with different providers (e.g., ollama/claude vs anthropic/claude)
+  // from confusing the picker when the proxy provider appears first.
+  for (const entry of catalog) {
+    const modelId = entry.id.trim().toLowerCase();
+    if (seenModelIds.has(modelId)) {
+      continue;
+    }
+    // Check if a better provider exists for this model ID
+    const best = resolveBestProvider(catalog, entry.id);
+    if (best && best !== entry) {
+      // A better provider was found but will be processed when we encounter it in the loop.
+      // Skip this entry to avoid duplicates.
+      continue;
+    }
+    seenModelIds.add(modelId);
+    const option = buildChatModelOption(best ?? entry);
+    options.push({ value: option.value, label: option.label });
+  }
+
+  // Helper to add options for override/default without dedup conflicts
+  const addUniqueOption = (value: string) => {
     const trimmed = value.trim();
-    if (!trimmed) {
-      return;
-    }
+    if (!trimmed) return;
     const key = trimmed.toLowerCase();
-    if (seen.has(key)) {
-      return;
-    }
-    seen.add(key);
-    options.push({ value: trimmed, label: label ?? trimmed });
+    // Check if we already have this exact value
+    if (options.some((o) => o.value.toLowerCase() === key)) return;
+    options.push({ value: trimmed, label: trimmed });
   };
 
-  for (const entry of catalog) {
-    const option = buildChatModelOption(entry);
-    addOption(option.value, option.label);
-  }
-
   if (currentOverride) {
-    addOption(currentOverride);
+    addUniqueOption(currentOverride);
   }
   if (defaultModel) {
-    addOption(defaultModel);
+    addUniqueOption(defaultModel);
   }
   return options;
 }

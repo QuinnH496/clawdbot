@@ -91,3 +91,35 @@ export function buildChatModelOption(entry: ModelCatalogEntry): { value: string;
     label: provider ? `${entry.id} · ${provider}` : entry.id,
   };
 }
+
+/**
+ * Local proxy providers that should be deprioritized when the same model ID
+ * appears under multiple providers. A real provider (anthropic, openai, etc.)
+ * is always preferred over a local proxy (ollama, vllm, sglang).
+ */
+const LOCAL_PROXY_PROVIDERS = new Set(["ollama", "vllm", "sglang", "local"]);
+
+/**
+ * Resolve the best provider for a model ID when it appears in multiple providers.
+ * Prefers real providers over local proxies.
+ */
+export function resolveBestProvider(
+  entries: ModelCatalogEntry[],
+  modelId: string,
+): ModelCatalogEntry | undefined {
+  const matches = entries.filter(
+    (e) => e.id.trim().toLowerCase() === modelId.trim().toLowerCase(),
+  );
+  if (matches.length === 0) return undefined;
+  if (matches.length === 1) return matches[0];
+
+  // Prefer non-proxy providers
+  const nonProxy = matches.filter(
+    (e) => !LOCAL_PROXY_PROVIDERS.has((e.provider ?? "").trim().toLowerCase()),
+  );
+  if (nonProxy.length === 1) return nonProxy[0];
+  if (nonProxy.length > 1) return nonProxy[0];
+
+  // All are proxies — just return the first
+  return matches[0];
+}
