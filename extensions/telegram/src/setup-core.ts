@@ -1,16 +1,20 @@
 import {
-  patchChannelConfigForAccount,
-  splitOnboardingEntries,
-} from "../../../src/channels/plugins/onboarding/helpers.js";
-import {
   applyAccountNameToChannelSection,
+  DEFAULT_ACCOUNT_ID,
+  formatCliCommand,
+  formatDocsLink,
   migrateBaseNameToDefaultAccount,
-} from "../../../src/channels/plugins/setup-helpers.js";
-import type { ChannelSetupAdapter } from "../../../src/channels/plugins/types.adapters.js";
-import { formatCliCommand } from "../../../src/cli/command-format.js";
-import type { OpenClawConfig } from "../../../src/config/config.js";
-import { DEFAULT_ACCOUNT_ID, normalizeAccountId } from "../../../src/routing/session-key.js";
-import { formatDocsLink } from "../../../src/terminal/links.js";
+  normalizeAccountId,
+  patchChannelConfigForAccount,
+  promptResolvedAllowFrom,
+  splitSetupEntries,
+  type OpenClawConfig,
+  type WizardPrompter,
+} from "../../../src/plugin-sdk-internal/setup.js";
+import type {
+  ChannelSetupAdapter,
+  ChannelSetupDmPolicy,
+} from "../../../src/plugin-sdk-internal/setup.js";
 import { resolveDefaultTelegramAccountId, resolveTelegramAccount } from "./accounts.js";
 import { fetchTelegramChatId } from "./api-fetch.js";
 
@@ -71,11 +75,7 @@ export async function resolveTelegramAllowFromEntries(params: {
 
 export async function promptTelegramAllowFromForAccount(params: {
   cfg: OpenClawConfig;
-  prompter: Parameters<
-    NonNullable<
-      import("../../../src/channels/plugins/onboarding-types.js").ChannelOnboardingDmPolicy["promptAllowFrom"]
-    >
-  >[0]["prompter"];
+  prompter: WizardPrompter;
   accountId?: string;
 }) {
   const accountId = params.accountId ?? resolveDefaultTelegramAccountId(params.cfg);
@@ -87,8 +87,6 @@ export async function promptTelegramAllowFromForAccount(params: {
       "Telegram",
     );
   }
-  const { promptResolvedAllowFrom } =
-    await import("../../../src/channels/plugins/onboarding/helpers.js");
   const unique = await promptResolvedAllowFrom({
     prompter: params.prompter,
     existing: resolved.config.allowFrom ?? [],
@@ -96,7 +94,7 @@ export async function promptTelegramAllowFromForAccount(params: {
     message: "Telegram allowFrom (numeric sender id; @username resolves to id)",
     placeholder: "@username",
     label: "Telegram allowlist",
-    parseInputs: splitOnboardingEntries,
+    parseInputs: splitSetupEntries,
     parseId: parseTelegramAllowFromId,
     invalidWithoutTokenNote:
       "Telegram token missing; use numeric sender ids (usernames require a bot token).",

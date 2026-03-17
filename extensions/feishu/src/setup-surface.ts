@@ -1,20 +1,20 @@
-import type { ChannelOnboardingDmPolicy } from "../../../src/channels/plugins/onboarding-types.js";
 import {
   buildSingleChannelSecretPromptState,
+  DEFAULT_ACCOUNT_ID,
+  formatDocsLink,
+  hasConfiguredSecretInput,
   mergeAllowFromEntries,
   promptSingleChannelSecretInput,
   setTopLevelChannelAllowFrom,
   setTopLevelChannelDmPolicyWithAllowFrom,
   setTopLevelChannelGroupPolicy,
-  splitOnboardingEntries,
-} from "../../../src/channels/plugins/onboarding/helpers.js";
-import type { ChannelSetupWizard } from "../../../src/channels/plugins/setup-wizard.js";
-import type { OpenClawConfig } from "../../../src/config/config.js";
-import type { DmPolicy } from "../../../src/config/types.js";
-import type { SecretInput } from "../../../src/config/types.secrets.js";
-import { hasConfiguredSecretInput } from "../../../src/config/types.secrets.js";
-import { DEFAULT_ACCOUNT_ID } from "../../../src/routing/session-key.js";
-import { formatDocsLink } from "../../../src/terminal/links.js";
+  splitSetupEntries,
+  type ChannelSetupDmPolicy,
+  type ChannelSetupWizard,
+  type DmPolicy,
+  type OpenClawConfig,
+  type SecretInput,
+} from "openclaw/plugin-sdk/setup";
 import { listFeishuAccountIds, resolveFeishuCredentials } from "./accounts.js";
 import { probeFeishu } from "./probe.js";
 import { feishuSetupAdapter } from "./setup-core.js";
@@ -115,7 +115,7 @@ function isFeishuConfigured(cfg: OpenClawConfig): boolean {
 
 async function promptFeishuAllowFrom(params: {
   cfg: OpenClawConfig;
-  prompter: Parameters<NonNullable<ChannelOnboardingDmPolicy["promptAllowFrom"]>>[0]["prompter"];
+  prompter: Parameters<NonNullable<ChannelSetupDmPolicy["promptAllowFrom"]>>[0]["prompter"];
 }): Promise<OpenClawConfig> {
   const existing = params.cfg.channels?.feishu?.allowFrom ?? [];
   await params.prompter.note(
@@ -136,7 +136,7 @@ async function promptFeishuAllowFrom(params: {
       initialValue: existing[0] ? String(existing[0]) : undefined,
       validate: (value) => (String(value ?? "").trim() ? undefined : "Required"),
     });
-    const parts = splitOnboardingEntries(String(entry));
+    const parts = splitSetupEntries(String(entry));
     if (parts.length === 0) {
       await params.prompter.note("Enter at least one user.", "Feishu allowlist");
       continue;
@@ -177,7 +177,7 @@ async function promptFeishuAppId(params: {
   ).trim();
 }
 
-const feishuDmPolicy: ChannelOnboardingDmPolicy = {
+const feishuDmPolicy: ChannelSetupDmPolicy = {
   label: "Feishu",
   channel,
   policyKey: "channels.feishu.dmPolicy",
@@ -458,7 +458,7 @@ export const feishuSetupWizard: ChannelSetupWizard = {
         initialValue: existing.length > 0 ? existing.map(String).join(", ") : undefined,
       });
       if (entry) {
-        const parts = splitOnboardingEntries(String(entry));
+        const parts = splitSetupEntries(String(entry));
         if (parts.length > 0) {
           next = setFeishuGroupAllowFrom(next, parts);
         }
