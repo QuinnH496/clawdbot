@@ -37,7 +37,12 @@ describe("proxy stream wrappers", () => {
   });
 
   it("adds cache_control to system message for OpenRouter Anthropic models", () => {
+    let capturedPayload: unknown;
     const baseStreamFn: StreamFn = (_model, _context, options) => {
+      // Simulate the transport calling onPayload with the outgoing payload
+      options?.onPayload?.({
+        messages: [{ role: "system", content: "You are a helpful assistant." }],
+      });
       return createAssistantMessageEventStream();
     };
 
@@ -50,21 +55,27 @@ describe("proxy stream wrappers", () => {
 
     wrapped(model, { messages: [] }, {
       onPayload: (payload) => {
-        const systemMsg = (payload as { messages: Array<{ role: string; content: unknown }> })
-          .messages[0];
-        expect(systemMsg.content).toEqual([
-          {
-            type: "text",
-            text: "You are a helpful assistant.",
-            cache_control: { type: "ephemeral" },
-          },
-        ]);
+        capturedPayload = payload;
       },
     });
+
+    const systemMsg = (capturedPayload as { messages: Array<{ role: string; content: unknown }> })
+      .messages[0];
+    expect(systemMsg.content).toEqual([
+      {
+        type: "text",
+        text: "You are a helpful assistant.",
+        cache_control: { type: "ephemeral" },
+      },
+    ]);
   });
 
   it("adds cache_control to system message for OpenRouter DeepSeek models", () => {
+    let capturedPayload: unknown;
     const baseStreamFn: StreamFn = (_model, _context, options) => {
+      options?.onPayload?.({
+        messages: [{ role: "system", content: "You are a helpful assistant." }],
+      });
       return createAssistantMessageEventStream();
     };
 
@@ -77,21 +88,27 @@ describe("proxy stream wrappers", () => {
 
     wrapped(model, { messages: [] }, {
       onPayload: (payload) => {
-        const systemMsg = (payload as { messages: Array<{ role: string; content: unknown }> })
-          .messages[0];
-        expect(systemMsg.content).toEqual([
-          {
-            type: "text",
-            text: "You are a helpful assistant.",
-            cache_control: { type: "ephemeral" },
-          },
-        ]);
+        capturedPayload = payload;
       },
     });
+
+    const systemMsg = (capturedPayload as { messages: Array<{ role: string; content: unknown }> })
+      .messages[0];
+    expect(systemMsg.content).toEqual([
+      {
+        type: "text",
+        text: "You are a helpful assistant.",
+        cache_control: { type: "ephemeral" },
+      },
+    ]);
   });
 
   it("passes through without modification for non-cacheable OpenRouter models", () => {
+    let capturedPayload: unknown;
     const baseStreamFn: StreamFn = (_model, _context, options) => {
+      options?.onPayload?.({
+        messages: [{ role: "system", content: "You are a helpful assistant." }],
+      });
       return createAssistantMessageEventStream();
     };
 
@@ -104,17 +121,22 @@ describe("proxy stream wrappers", () => {
 
     wrapped(model, { messages: [] }, {
       onPayload: (payload) => {
-        const systemMsg = (payload as { messages: Array<{ role: string; content: unknown }> })
-          .messages[0];
-        if (typeof systemMsg.content === "string") {
-          expect(systemMsg.content).toBe("You are a helpful assistant.");
-        }
+        capturedPayload = payload;
       },
     });
+
+    // Non-cacheable models should pass through unmodified — content stays as string
+    const systemMsg = (capturedPayload as { messages: Array<{ role: string; content: unknown }> })
+      .messages[0];
+    expect(systemMsg.content).toBe("You are a helpful assistant.");
   });
 
   it("passes through without modification for non-OpenRouter providers", () => {
+    let capturedPayload: unknown;
     const baseStreamFn: StreamFn = (_model, _context, options) => {
+      options?.onPayload?.({
+        messages: [{ role: "system", content: "You are a helpful assistant." }],
+      });
       return createAssistantMessageEventStream();
     };
 
@@ -127,12 +149,13 @@ describe("proxy stream wrappers", () => {
 
     wrapped(model, { messages: [] }, {
       onPayload: (payload) => {
-        const systemMsg = (payload as { messages: Array<{ role: string; content: unknown }> })
-          .messages[0];
-        if (typeof systemMsg.content === "string") {
-          expect(systemMsg.content).toBe("You are a helpful assistant.");
-        }
+        capturedPayload = payload;
       },
     });
+
+    // Non-OpenRouter providers should pass through unmodified
+    const systemMsg = (capturedPayload as { messages: Array<{ role: string; content: unknown }> })
+      .messages[0];
+    expect(systemMsg.content).toBe("You are a helpful assistant.");
   });
 });

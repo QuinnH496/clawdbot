@@ -11,10 +11,6 @@ function resolveKilocodeAppHeaders(): Record<string, string> {
   return { [KILOCODE_FEATURE_HEADER]: feature };
 }
 
-function isOpenRouterAnthropicModel(provider: string, modelId: string): boolean {
-  return provider.toLowerCase() === "openrouter" && modelId.toLowerCase().startsWith("anthropic/");
-}
-
 function isOpenRouterCacheableModel(provider: string, modelId: string): boolean {
   if (provider.toLowerCase() !== "openrouter") {
     return false;
